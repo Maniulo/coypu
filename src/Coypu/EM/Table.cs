@@ -12,6 +12,22 @@ namespace Coypu
         public List<string> HeaderCaptions;
         private List<List<ElementScope>> RowsOfElements;
 
+        public IEnumerable<ElementScope[]> DataRaw
+        {
+            get
+            {
+                if (scope == null)
+                    throw new Exception("Table scope was not initialized. Use SetScope() before calling Data.");
+
+                InitMultiple();
+
+                foreach (var row in RowsOfElements)
+                {
+                    yield return row.ToArray();
+                }
+            }
+        }
+
         public IEnumerable<T> Data
         {
             get
@@ -72,8 +88,22 @@ namespace Coypu
             this.locators = locators;
         }
 
+        public TableScope(DriverScope b, bool header, params string[] locators)
+        {
+            SetScope(b);
+            this.isHeader = header;
+            this.locators = locators;
+        }
+
         public TableScope(params string[] locators)
         {
+            this.locators = locators;
+        }
+
+        bool isHeader = true;
+        public TableScope(bool header, params string[] locators)
+        {
+            this.isHeader = header;
             this.locators = locators;
         }
 
@@ -86,7 +116,7 @@ namespace Coypu
 
             for (int i = 1; i < locators.Length; i++)
             {
-                var right = new TableScope<T>(scope, locators[i]);
+                var right = new TableScope<T>(scope, isHeader, locators[i]);
                 right.Init();
                 Merge(right);
             }
@@ -108,34 +138,38 @@ namespace Coypu
             }
 
             // head
-            ElementScope theader;
-            IEnumerable<ElementScope> headerLines;
-            try
+            if (isHeader)
             {
-                theader = table.FindAllXPath(".//thead").First();
-                headerLines = (IEnumerable<ElementScope>)theader.FindAllXPath(".//tr");
-            }
-            catch (NoSuchElementException)
-            {
-                theader = table;
-                headerLines = new ElementScope[] { theader.FindAllXPath(".//tr").First() };
-                RowsOfElements.RemoveAt(0);
-            }
-
-            Header = new List<ElementScope>();
-            HeaderCaptions = new List<string>();
-            foreach (var tr in headerLines)
-            {
-                var cells = tr.FindAllXPath(".//th");
-                if (cells.Count() > 0)
+                ElementScope theader;
+                IEnumerable<ElementScope> headerLines;
+                try
                 {
-                    if (Header.Count > 0)
-                        throw new Exception($"Too many headers in the table {locators[0]}. Contents: {theader.Text}");
+                    theader = table.FindAllXPath(".//thead").First();
+                    headerLines = (IEnumerable<ElementScope>) theader.FindAllXPath(".//tr");
+                }
+                catch (NoSuchElementException)
+                {
+                    theader = table;
+                    headerLines = new ElementScope[] {theader.FindAllXPath(".//tr").First()};
+                    RowsOfElements.RemoveAt(0);
+                }
 
-                    foreach (var td in cells)
+                Header = new List<ElementScope>();
+                HeaderCaptions = new List<string>();
+                foreach (var tr in headerLines)
+                {
+                    var cells = tr.FindAllXPath(".//th");
+                    if (cells.Count() > 0)
                     {
-                        Header.Add(td);
-                        HeaderCaptions.Add(td.Text);
+                        if (Header.Count > 0)
+                            throw new Exception(
+                                $"Too many headers in the table {locators[0]}. Contents: {theader.Text}");
+
+                        foreach (var td in cells)
+                        {
+                            Header.Add(td);
+                            HeaderCaptions.Add(td.Text);
+                        }
                     }
                 }
             }

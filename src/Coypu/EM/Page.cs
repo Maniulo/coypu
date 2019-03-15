@@ -151,7 +151,11 @@ namespace Coypu
 
         public static TableScope<T> Table<T>(params string[] locators) where T : TableRecord
         {
-            return dummy.FindTable<T>(locators);
+            return dummy.FindTable<T>(true, locators);
+        }
+        public static TableScope<T> RawTable<T>(params string[] locators) where T : TableRecord
+        {
+            return dummy.FindTable<T>(false, locators);
         }
 
         public static T Container<T>(string locator, Options options = null) where T : ContainerScope, new()
